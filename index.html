@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qoo10確定申告データ変換ツール</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        accent: '#F97316'
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+        /* Loading indicator */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen" onload="initializeApp()">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-primary p-2 rounded-lg">
+                        <i data-lucide="calculator" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-900">Qoo10確定申告データ変換ツール</h1>
+                </div>
+                <nav class="hidden md:flex space-x-6">
+                    <button id="converterTab" class="px-4 py-2 text-primary border-b-2 border-primary font-medium">変換ツール</button>
+                    <button id="readmeTab" class="px-4 py-2 text-gray-600 hover:text-primary transition-colors">使い方・README</button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Converter Section -->
+        <div id="converterSection" class="space-y-8">
+            <!-- Upload Area -->
+            <div class="bg-white rounded-xl shadow-sm border p-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-6">CSVファイルをアップロード</h2>
+                
+                <div class="grid md:grid-cols-3 gap-6">
+                    <!-- Selling Report Upload -->
+                    <div class="upload-area bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer" data-file-type="sellingreport">
+                        <div class="mb-4">
+                            <i data-lucide="file-text" class="w-12 h-12 text-gray-400 mx-auto mb-2"></i>
+                            <h3 class="font-medium text-gray-900">sellingreport.csv</h3>
+                            <p class="text-sm text-gray-500 mt-1">売上レポート</p>
+                        </div>
+                        <div class="upload-status hidden">
+                            <i data-lucide="check-circle" class="w-6 h-6 text-secondary mx-auto mb-1"></i>
+                            <p class="text-sm text-secondary font-medium">アップロード済み</p>
+                        </div>
+                        <input type="file" accept=".csv" class="hidden" data-file-input="sellingreport">
+                    </div>
+
+                    <!-- RecvMegawari Upload -->
+                    <div class="upload-area bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer" data-file-type="megawari">
+                        <div class="mb-4">
+                            <i data-lucide="file-text" class="w-12 h-12 text-gray-400 mx-auto mb-2"></i>
+                            <h3 class="font-medium text-gray-900">RecvMegawari.csv</h3>
+                            <p class="text-sm text-gray-500 mt-1">メガワリ受取</p>
+                        </div>
+                        <div class="upload-status hidden">
+                            <i data-lucide="check-circle" class="w-6 h-6 text-secondary mx-auto mb-1"></i>
+                            <p class="text-sm text-secondary font-medium">アップロード済み</p>
+                        </div>
+                        <input type="file" accept=".csv" class="hidden" data-file-input="megawari">
+                    </div>
+
+                    <!-- RCV Upload -->
+                    <div class="upload-area bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer" data-file-type="rcv">
+                        <div class="mb-4">
+                            <i data-lucide="file-text" class="w-12 h-12 text-gray-400 mx-auto mb-2"></i>
+                            <h3 class="font-medium text-gray-900">rcv.csv</h3>
+                            <p class="text-sm text-gray-500 mt-1">入金データ</p>
+                        </div>
+                        <div class="upload-status hidden">
+                            <i data-lucide="check-circle" class="w-6 h-6 text-secondary mx-auto mb-1"></i>
+                            <p class="text-sm text-secondary font-medium">アップロード済み</p>
+                        </div>
+                        <input type="file" accept=".csv" class="hidden" data-file-input="rcv">
+                    </div>
+                </div>
+
+                <div class="mt-8 text-center">
+                    <button id="convertBtn" class="bg-primary text-white px-8 py-3 rounded-lg font-medium hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed" disabled>
+                        <i data-lucide="play-circle" class="w-5 h-5 inline mr-2"></i>
+                        データ変換実行
+                    </button>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div id="progressSection" class="bg-white rounded-xl shadow-sm border p-6 hidden">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">処理中...</h3>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div id="progressBar" class="bg-primary h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p id="progressText" class="text-sm text-gray-600 mt-2">ファイルを読み込み中...</p>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultsSection" class="bg-white rounded-xl shadow-sm border p-6 hidden">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-medium text-gray-900">変換結果</h3>
+                    <button id="downloadBtn" class="bg-secondary text-white px-6 py-2 rounded-lg font-medium hover:bg-green-600 transition-colors">
+                        <i data-lucide="download" class="w-4 h-4 inline mr-2"></i>
+                        journal.csvダウンロード
+                    </button>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left font-medium text-gray-900">取引日</th>
+                                <th class="px-4 py-3 text-left font-medium text-gray-900">借方勘定科目</th>
+                                <th class="px-4 py-3 text-left font-medium text-gray-900">借方金額</th>
+                                <th class="px-4 py-3 text-left font-medium text-gray-900">貸方勘定科目</th>
+                                <th class="px-4 py-3 text-left font-medium text-gray-900">貸方金額</th>
+                                <th class="px-4 py-3 text-left font-medium text-gray-900">概要</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody" class="divide-y divide-gray-200">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- README Section -->
+        <div id="readmeSection" class="hidden space-y-8">
+            <div class="bg-white rounded-xl shadow-sm border p-8">
+                <h2 class="text-2xl font-bold text-gray-900 mb-6">使い方とREADME</h2>
+                
+                <div class="prose max-w-none">
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">概要</h3>
+                    <p class="text-gray-700 mb-6">
+                        このツールは、Qoo10からダウンロードした売上データを、マネーフォワードクラウドの仕訳日記帳にインポート可能な形式に変換します。
+                    </p>
+
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">対応ファイル</h3>
+                    <div class="grid md:grid-cols-3 gap-6 mb-8">
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <h4 class="font-medium text-blue-900 mb-2">sellingreport.csv</h4>
+                            <ul class="text-sm text-blue-800 space-y-1">
+                                <li>• K列「発送日」→ 仕訳する年月日</li>
+                                <li>• B列「発生の理由」→ 概要</li>
+                                <li>• O列「商品決済金」→ 売上高</li>
+                                <li>• T列「Qoo10サービス利用料」→ 販売手数料</li>
+                                <li>• AI列「メガワリ/メガポ補償金」→ 売上高</li>
+                            </ul>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded-lg">
+                            <h4 class="font-medium text-green-900 mb-2">RecvMegawari.csv</h4>
+                            <ul class="text-sm text-green-800 space-y-1">
+                                <li>• A列「発生日」→ 仕訳する年月日</li>
+                                <li>• B列「発生項目」→ 概要</li>
+                                <li>• D列「差引対象金額」→ 販売手数料</li>
+                            </ul>
+                        </div>
+                        <div class="bg-orange-50 p-4 rounded-lg">
+                            <h4 class="font-medium text-orange-900 mb-2">rcv.csv</h4>
+                            <ul class="text-sm text-orange-800 space-y-1">
+                                <li>• A列「発生日」→ 仕訳する年月日</li>
+                                <li>• B列「発生項目」→ 概要</li>
+                                <li>• D列「差引対象金額」→ 販売手数料</li>
+                                <li>• 月ごとに集計</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">仕訳ルール</h3>
+                    <div class="bg-gray-50 p-6 rounded-lg mb-6">
+                        <h4 class="font-medium text-gray-900 mb-3">売上高に関するもの</h4>
+                        <div class="grid md:grid-cols-2 gap-4">
+                            <div class="bg-white p-4 rounded border">
+                                <h5 class="font-medium text-green-600 mb-2">通常売上</h5>
+                                <p class="text-sm text-gray-700">借方：売掛金　貸方：売上高</p>
+                            </div>
+                            <div class="bg-white p-4 rounded border">
+                                <h5 class="font-medium text-red-600 mb-2">キャンセル時</h5>
+                                <p class="text-sm text-gray-700">借方：売上高　貸方：売掛金</p>
+                            </div>
+                        </div>
+                        
+                        <h4 class="font-medium text-gray-900 mb-3 mt-6">販売手数料に関するもの</h4>
+                        <div class="bg-white p-4 rounded border">
+                            <p class="text-sm text-gray-700">借方：販売手数料　貸方：売掛金</p>
+                            <p class="text-xs text-gray-500 mt-1">※Qoo10サービス利用料は税抜表示のため1.1倍して計算</p>
+                        </div>
+                    </div>
+
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">入金時の仕訳例</h3>
+                    <div class="bg-yellow-50 p-6 rounded-lg mb-6">
+                        <p class="text-sm text-yellow-800 mb-4">Qoo10から売上の入金があった際は、以下の仕訳を手動で登録してください。<br>送金手数料として150円が差し引かれます。</p>
+                        <div class="bg-white p-4 rounded border">
+                            <table class="w-full text-sm">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left">取引日</th>
+                                        <th class="px-3 py-2 text-left">借方</th>
+                                        <th class="px-3 py-2 text-left">金額</th>
+                                        <th class="px-3 py-2 text-left">貸方</th>
+                                        <th class="px-3 py-2 text-left">金額</th>
+                                        <th class="px-3 py-2 text-left">概要</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-gray-700">
+                                    <tr>
+                                        <td class="px-3 py-2">2025年1月1日</td>
+                                        <td class="px-3 py-2">普通預金</td>
+                                        <td class="px-3 py-2">100,000</td>
+                                        <td class="px-3 py-2">売掛金</td>
+                                        <td class="px-3 py-2">100,150</td>
+                                        <td class="px-3 py-2">売掛金の消込</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-3 py-2"></td>
+                                        <td class="px-3 py-2">支払手数料</td>
+                                        <td class="px-3 py-2">150</td>
+                                        <td class="px-3 py-2"></td>
+                                        <td class="px-3 py-2"></td>
+                                        <td class="px-3 py-2">送金手数料</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <h3 class="text-xl font-semibold text-gray-900 mb-4">使用方法</h3>
+                    
+                    <h4 class="text-lg font-medium text-gray-900 mb-3">1. Qoo10からCSVファイルをダウンロード</h4>
+                    <div class="bg-blue-50 p-6 rounded-lg mb-6">
+                        <p class="text-sm text-blue-800 mb-4">
+                            <strong>Qoo10へログイン:</strong> 
+                            <a href="https://qsm.qoo10.jp/GMKT.INC.Gsm.Web/login.aspx" target="_blank" class="underline hover:text-blue-600">https://qsm.qoo10.jp/GMKT.INC.Gsm.Web/login.aspx</a>
+                        </p>
+                        
+                        <div class="space-y-6">
+                            <div class="bg-white p-4 rounded border">
+                                <h5 class="font-medium text-blue-900 mb-3">sellingreport.csvのダウンロード方法</h5>
+                                <ol class="list-decimal list-inside space-y-2 text-sm text-blue-800">
+                                    <li>「精算管理」→「販売内訳」をクリック</li>
+                                    <li>画面下部の「販売詳細内訳」へ移動</li>
+                                    <li>検索条件を「発送日」、期間を指定（9月の売上を集計したい場合は、9/1~9/30）</li>
+                                    <li>検索条件を指定</li>
+                                    <li>検索ボタンをクリック</li>
+                                    <li>「Excel」をクリックしてダウンロード</li>
+                                </ol>
+                            </div>
+                            
+                            <div class="bg-white p-4 rounded border">
+                                <h5 class="font-medium text-blue-900 mb-3">rcv.csvのダウンロード方法</h5>
+                                <ol class="list-decimal list-inside space-y-2 text-sm text-blue-800">
+                                    <li>「販売関連の差引内訳」タブをクリック</li>
+                                    <li>検索ボタンをクリック</li>
+                                    <li>「Excel」をクリックしてダウンロード</li>
+                                </ol>
+                            </div>
+                            
+                            <div class="bg-white p-4 rounded border">
+                                <h5 class="font-medium text-blue-900 mb-3">RecvMegawari.csvのダウンロード方法</h5>
+                                <ol class="list-decimal list-inside space-y-2 text-sm text-blue-800">
+                                    <li>「販売関連の差引内訳_メガ割」タブをクリック</li>
+                                    <li>検索ボタンをクリック</li>
+                                    <li>「Excel」をクリックしてダウンロード</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h4 class="text-lg font-medium text-gray-900 mb-3">2. データ変換手順</h4>
+                    <ol class="list-decimal list-inside space-y-3 text-gray-700">
+                        <li>上記の方法でQoo10から必要なCSVファイルをダウンロード</li>
+                        <li>「変換ツール」タブで各ファイルをアップロード</li>
+                        <li>「データ変換実行」ボタンをクリック</li>
+                        <li>変換結果を確認し、journal.csvをダウンロード</li>
+                        <li>マネーフォワードクラウドにインポート</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Debug info -->
+    <div id="debugInfo" class="fixed bottom-4 right-4 bg-black text-white p-2 rounded text-xs hidden">
+        <div>Tailwind: <span id="tailwindStatus">Loading...</span></div>
+        <div>Lucide: <span id="lucideStatus">Loading...</span></div>
+        <div>Script: <span id="scriptStatus">Loading...</span></div>
+    </div>
+
+    <script src="/script.js"></script>
+    <script>
+        // Debug information
+        function updateDebugInfo() {
+            const debugInfo = document.getElementById('debugInfo');
+            const tailwindStatus = document.getElementById('tailwindStatus');
+            const lucideStatus = document.getElementById('lucideStatus');
+            const scriptStatus = document.getElementById('scriptStatus');
+            
+            if (debugInfo) {
+                debugInfo.classList.remove('hidden');
+                
+                // Check Tailwind
+                const testEl = document.createElement('div');
+                testEl.className = 'bg-primary';
+                document.body.appendChild(testEl);
+                const bgColor = window.getComputedStyle(testEl).backgroundColor;
+                document.body.removeChild(testEl);
+                tailwindStatus.textContent = (bgColor.includes('59, 130, 246') || bgColor.includes('rgb(59, 130, 246)')) ? 'OK' : 'Failed';
+                
+                // Check Lucide
+                lucideStatus.textContent = typeof lucide !== 'undefined' ? 'OK' : 'Failed';
+                
+                // Check Script
+                scriptStatus.textContent = (typeof initializeApp !== 'undefined' && typeof window.initializeApp !== 'undefined') ? 'OK' : 'Failed';
+            }
+        }
+        
+        // Run debug check after a delay
+        setTimeout(updateDebugInfo, 2000);
+        
+        // Hide debug info after 10 seconds
+        setTimeout(() => {
+            const debugInfo = document.getElementById('debugInfo');
+            if (debugInfo) debugInfo.classList.add('hidden');
+        }, 10000);
+    </script>
+</body>
+</html>

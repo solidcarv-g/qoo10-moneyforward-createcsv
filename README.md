@@ -1,1 +1,1 @@
-# qoo10-moneyforward-createcsv
+qoo10-moneyforward
